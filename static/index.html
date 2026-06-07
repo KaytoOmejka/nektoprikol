@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nekto.me · мост</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <!-- Экран настройки -->
+  <section id="setup" class="screen">
+    <div class="card">
+      <h1>nekto.me · мост</h1>
+      <p class="hint">
+        Вставь два токена из nekto.me — приложение соединит двух собеседников
+        и даст писать от лица любого из них. Как достать токен — см. README.
+      </p>
+
+      <div class="nekto-open">
+        <button class="ghost" id="open-nekto-1">🌐 Открыть nekto.me · окно 1</button>
+        <button class="ghost" id="open-nekto-2">🌐 Открыть nekto.me · окно 2</button>
+      </div>
+
+      <details class="guide">
+        <summary>❓ Как получить токен (нажми, если не знаешь)</summary>
+        <div class="guide-body">
+          <p><b>Способ 1 — кнопка-закладка (проще всего).</b> Настраивается один раз:</p>
+          <ol>
+            <li>Включи панель закладок в браузере: нажми <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>
+              (на Mac — <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>). Сверху появится строка с закладками.</li>
+            <li><b>Перетащи мышкой</b> вот эту кнопку на панель закладок (зажми и тяни наверх):
+              <div class="bm-wrap">
+                <a class="bm" draggable="true"
+                   href="javascript:(function(){function d(o){if(!o||typeof o!=='object')return null;if(o.authToken)return o.authToken;for(var k in o){var r=d(o[k]);if(r)return r}return null}var t=null;try{t=JSON.parse(localStorage.getItem('storage_v2')).user.authToken}catch(e){}if(!t){for(var i=0;i<localStorage.length;i++){try{var r=d(JSON.parse(localStorage.getItem(localStorage.key(i))));if(r){t=r;break}}catch(e){}}}if(!t){alert('Токен не найден. Зайди на nekto.me, начни искать собеседника и немного попереписывайся, затем нажми закладку снова.');return}try{navigator.clipboard.writeText(t)}catch(e){}window.prompt('Готово! Токен скопирован в буфер. Вставь его в приложение (Ctrl+V). Или скопируй вручную отсюда:',t)})();">🔑 Взять токен nekto.me</a>
+              </div>
+            </li>
+            <li>Открой <b>nekto.me</b> (кнопки «Открыть nekto.me» выше), начни искать собеседника
+              и <b>немного попереписывайся</b> (5–10 коротких диалогов) — так аккаунт считается «живым».</li>
+            <li>Прямо на странице nekto.me нажми закладку <b>🔑 Взять токен</b> — токен скопируется.
+              Вставь его в поле «Токен» (<kbd>Ctrl</kbd>+<kbd>V</kbd>).</li>
+            <li>Повтори для второго собеседника во втором окне nekto.me.</li>
+          </ol>
+          <p class="muted-note">⚠️ Кнопку-закладку нужно нажимать <b>на сайте nekto.me</b>, а не здесь.</p>
+
+          <p><b>Способ 2 — через консоль</b> (если закладка не сработала):</p>
+          <ol>
+            <li>На nekto.me нажми <kbd>F12</kbd> → вкладка <b>Console</b>.</li>
+            <li>Вставь и нажми <kbd>Enter</kbd>:
+              <code class="snippet">copy(JSON.parse(localStorage.getItem("storage_v2")).user.authToken)</code></li>
+            <li>Токен скопирован в буфер — вставь сюда (<kbd>Ctrl</kbd>+<kbd>V</kbd>).</li>
+          </ol>
+        </div>
+      </details>
+
+      <div class="grid">
+        <div class="col">
+          <h3>Собеседник 1</h3>
+          <label>Токен <textarea id="a-token" rows="2" placeholder="authToken…"></textarea></label>
+          <label>User-Agent <input id="a-ua" type="text" /></label>
+          <details class="adv">
+            <summary>Параметры поиска</summary>
+            <div class="row">
+              <label>Мой пол
+                <select id="a-sex"><option value="">любой</option><option value="M">М</option><option value="F">Ж</option></select>
+              </label>
+              <label>Ищу пол
+                <select id="a-wsex"><option value="">любой</option><option value="M">М</option><option value="F">Ж</option></select>
+              </label>
+            </div>
+            <div class="row">
+              <label>Мой возраст <input id="a-age-min" type="number" min="10" max="99" placeholder="от"></label>
+              <label>&nbsp; <input id="a-age-max" type="number" min="10" max="99" placeholder="до"></label>
+            </div>
+            <div class="row">
+              <label>Возраст собес. <input id="a-wage-min" type="number" min="10" max="99" placeholder="от"></label>
+              <label>&nbsp; <input id="a-wage-max" type="number" min="10" max="99" placeholder="до"></label>
+            </div>
+          </details>
+        </div>
+
+        <div class="col">
+          <h3>Собеседник 2</h3>
+          <label>Токен <textarea id="b-token" rows="2" placeholder="authToken…"></textarea></label>
+          <label>User-Agent <input id="b-ua" type="text" /></label>
+          <details class="adv">
+            <summary>Параметры поиска</summary>
+            <div class="row">
+              <label>Мой пол
+                <select id="b-sex"><option value="">любой</option><option value="M">М</option><option value="F">Ж</option></select>
+              </label>
+              <label>Ищу пол
+                <select id="b-wsex"><option value="">любой</option><option value="M">М</option><option value="F">Ж</option></select>
+              </label>
+            </div>
+            <div class="row">
+              <label>Мой возраст <input id="b-age-min" type="number" min="10" max="99" placeholder="от"></label>
+              <label>&nbsp; <input id="b-age-max" type="number" min="10" max="99" placeholder="до"></label>
+            </div>
+            <div class="row">
+              <label>Возраст собес. <input id="b-wage-min" type="number" min="10" max="99" placeholder="от"></label>
+              <label>&nbsp; <input id="b-wage-max" type="number" min="10" max="99" placeholder="до"></label>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <label class="check"><input id="relay" type="checkbox" checked /> Автопересылка сообщений между собеседниками</label>
+      <button id="connect" class="primary">Соединить</button>
+    </div>
+  </section>
+
+  <!-- Рабочий экран -->
+  <section id="work" class="screen hidden">
+    <header class="topbar">
+      <div class="badges">
+        <span class="badge" id="status-1">
+          <span class="badge-main"><b>Собеседник 1</b><span class="state">—</span></span>
+          <span class="dots"><i></i><i></i><i></i></span>
+          <button class="badge-search" data-side="1" title="Искать нового собеседника для стороны 1">🔄 искать</button>
+        </span>
+        <span class="badge" id="status-2">
+          <span class="badge-main"><b>Собеседник 2</b><span class="state">—</span></span>
+          <span class="dots"><i></i><i></i><i></i></span>
+          <button class="badge-search" data-side="2" title="Искать нового собеседника для стороны 2">🔄 искать</button>
+        </span>
+      </div>
+      <div class="actions">
+        <label class="check small"><input id="relay-toggle" type="checkbox" checked /> Автопересылка</label>
+        <button id="open-nekto-w">🌐 nekto.me</button>
+        <button id="skip">Искать обоим</button>
+        <button id="stop" class="danger">Стоп</button>
+      </div>
+    </header>
+
+    <div id="log" class="log"><div id="feed" class="feed"></div></div>
+
+    <footer class="composer" id="composer">
+      <select id="as">
+        <option value="1">Писать как: Собеседник 1</option>
+        <option value="2">Писать как: Собеседник 2</option>
+      </select>
+      <input id="text" type="text" placeholder="Сообщение…  (Tab — сменить сторону)" autocomplete="off" />
+      <button id="send" class="primary">Отправить</button>
+    </footer>
+  </section>
+
+  <script src="/app.js"></script>
+</body>
+</html>
