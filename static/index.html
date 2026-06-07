@@ -113,25 +113,33 @@
   <section id="work" class="screen hidden">
     <header class="topbar">
       <div class="badges">
-        <span class="badge" id="status-1"><b>Собеседник 1</b><span class="state">—</span><span class="dots"><i></i><i></i><i></i></span></span>
-        <span class="badge" id="status-2"><b>Собеседник 2</b><span class="state">—</span><span class="dots"><i></i><i></i><i></i></span></span>
+        <span class="badge" id="status-1">
+          <span class="badge-main"><b>Собеседник 1</b><span class="state">—</span></span>
+          <span class="dots"><i></i><i></i><i></i></span>
+          <button class="badge-search" data-side="1" title="Искать нового собеседника для стороны 1">🔄 искать</button>
+        </span>
+        <span class="badge" id="status-2">
+          <span class="badge-main"><b>Собеседник 2</b><span class="state">—</span></span>
+          <span class="dots"><i></i><i></i><i></i></span>
+          <button class="badge-search" data-side="2" title="Искать нового собеседника для стороны 2">🔄 искать</button>
+        </span>
       </div>
       <div class="actions">
         <label class="check small"><input id="relay-toggle" type="checkbox" checked /> Автопересылка</label>
         <button id="open-nekto-w">🌐 nekto.me</button>
-        <button id="skip">Новый поиск</button>
+        <button id="skip">Искать обоим</button>
         <button id="stop" class="danger">Стоп</button>
       </div>
     </header>
 
-    <div id="log" class="log"></div>
+    <div id="log" class="log"><div id="feed" class="feed"></div></div>
 
-    <footer class="composer">
+    <footer class="composer" id="composer">
       <select id="as">
         <option value="1">Писать как: Собеседник 1</option>
         <option value="2">Писать как: Собеседник 2</option>
       </select>
-      <input id="text" type="text" placeholder="Сообщение…" autocomplete="off" />
+      <input id="text" type="text" placeholder="Сообщение…  (Tab — сменить сторону)" autocomplete="off" />
       <button id="send" class="primary">Отправить</button>
     </footer>
   </section>

@@ -53,7 +53,7 @@ class NektoClient:
 
         self.user_id: Any = None
         self.dialog_id: Any = None
-        self.auto_search = True  # искать заново, когда собеседник ушёл
+        self.auto_search = False  # по умолчанию НЕ ищем заново — ждём команды оператора
 
         self.sio = socketio.AsyncClient(
             logger=debug, engineio_logger=debug, reconnection=True
@@ -143,6 +143,9 @@ class NektoClient:
         await self._notify("partner_left")
         if self.auto_search:
             await self.search()
+        else:
+            # ждём, пока оператор сам нажмёт «искать» для этой стороны
+            await self._notify("status", state="left")
 
     async def _on_message(self, data: dict) -> None:
         sender = data.get("senderId")

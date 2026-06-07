@@ -122,6 +122,12 @@ class Session:
         for c in self.clients.values():
             await c.search()
 
+    async def search_side(self, side: str) -> None:
+        """Искать нового собеседника только для одной стороны ("1" или "2")."""
+        c = self.clients.get(side)
+        if c:
+            await c.search()
+
     async def set_relay(self, enabled: bool) -> None:
         self.relay = enabled
         await self.send_browser(
@@ -167,6 +173,8 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                     await session.set_relay(bool(data.get("enabled")))
                 elif t == "skip":
                     await session.skip()
+                elif t == "search":
+                    await session.search_side(data.get("side", "1"))
                 elif t == "stop":
                     await session.stop()
                     await session.send_browser({"type": "system", "text": "Отключено."})

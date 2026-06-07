@@ -6,6 +6,7 @@ const STATE_LABEL = {
   authed: "вход выполнен",
   searching: "ищет собеседника…",
   chatting: "общается",
+  left: "собеседник вышел",
   closed: "отключён",
 };
 
@@ -45,22 +46,36 @@ function handle(m) {
 }
 
 // ---------- Рендер ----------
+function nowHHMM() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+}
+
 function addMessage(from, text, injected) {
   const el = document.createElement("div");
   el.className = `msg from-${from}` + (injected ? " injected" : "");
   const who = `Собеседник ${from}` + (injected ? `<span class="tag">вставлено</span>` : "");
-  el.innerHTML = `<span class="who">${who}</span>${escapeHtml(text)}`;
-  const log = $("log");
-  log.appendChild(el);
-  log.scrollTop = log.scrollHeight;
+  el.innerHTML =
+    `<span class="avatar a${from}">${from}</span>` +
+    `<div class="bubble">` +
+      `<span class="who">${who}</span>` +
+      `<span class="body">${escapeHtml(text)}</span>` +
+      `<span class="time">${nowHHMM()}</span>` +
+    `</div>`;
+  appendToFeed(el);
 }
 
 function sys(text) {
   const el = document.createElement("div");
   el.className = "sys";
   el.textContent = text;
+  appendToFeed(el);
+}
+
+// общий хвост: добавить в ленту и доскроллить контейнер вниз
+function appendToFeed(el) {
+  $("feed").appendChild(el);
   const log = $("log");
-  log.appendChild(el);
   log.scrollTop = log.scrollHeight;
 }
 
@@ -153,8 +168,23 @@ function doSend() {
 }
 
 $("send").onclick = doSend;
+
+// окрасить композер под выбранную сторону («пишу как…»)
+function paintComposer() {
+  $("composer").dataset.side = $("as").value;
+}
+$("as").onchange = paintComposer;
+paintComposer();
+
 $("text").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") doSend();
+  if (e.key === "Enter") {
+    doSend();
+  } else if (e.key === "Tab") {
+    // Tab прямо в поле ввода переключает сторону, от лица которой пишем
+    e.preventDefault();
+    $("as").value = $("as").value === "1" ? "2" : "1";
+    paintComposer();
+  }
 });
 
 // индикатор «печатает» партнёру, пока оператор набирает
@@ -174,6 +204,10 @@ $("text").addEventListener("input", () => {
 
 $("relay-toggle").onchange = (e) => sendWS({ type: "relay", enabled: e.target.checked });
 $("skip").onclick = () => sendWS({ type: "skip" });
+// персональный поиск нового собеседника для одной стороны
+document.querySelectorAll(".badge-search").forEach((btn) => {
+  btn.onclick = () => sendWS({ type: "search", side: btn.dataset.side });
+});
 $("stop").onclick = () => {
   sendWS({ type: "stop" });
   showScreen("setup", "work");
