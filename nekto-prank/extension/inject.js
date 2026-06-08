@@ -31,6 +31,18 @@
   const log = (...a) => console.log("%c[мост]", "color:#4f8cff;font-weight:bold", ...a);
   const send = (payload) => window.postMessage({ __nektoBridge: "page", payload }, "*");
 
+  // RTCSessionDescription / RTCIceCandidate НЕ переживают structured-clone в
+  // postMessage → передаём их обычными JSON-объектами (их же принимают
+  // setRemoteDescription/addIceCandidate на той стороне).
+  const descJSON = (d) => (d ? { type: d.type, sdp: d.sdp } : null);
+  const candJSON = (c) =>
+    c ? {
+      candidate: c.candidate,
+      sdpMid: c.sdpMid,
+      sdpMLineIndex: c.sdpMLineIndex,
+      usernameFragment: c.usernameFragment,
+    } : null;
+
   // ---- состояние ----
   let ctx = null;            // AudioContext
   let mixDest = null;        // исходящий микс (→ nekto sender), = микрофон + чужой голос
@@ -48,6 +60,8 @@
   let loopRole = null;       // "offer" | "answer"
   let pendingSignals = [];   // сигналинг, пришедший раньше, чем создан loopPC
   let myIndex = null;        // номер вкладки в паре (0/1) — для подписи на панели
+  let callActive = false;    // перехвачен звонок nekto (есть исходящий микс)
+  let bridgeUp = false;      // loopback реально доставляет звук второй вкладки
 
   // ---- аудио-граф ----
   function buildGraph() {
@@ -66,10 +80,14 @@
   }
 
   function resume() {
-    if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().then(() => log("AudioContext →", ctx.state)).catch(() => {});
+    }
   }
-  document.addEventListener("click", resume, true);
-  document.addEventListener("keydown", resume, true);
+  // любой ввод на странице «будит» звук (Firefox стартует ctx в suspended)
+  ["click", "keydown", "pointerdown", "touchstart"].forEach((ev) =>
+    document.addEventListener(ev, resume, true)
+  );
 
   async function ensureMic() {
     if (micStream) return true;
@@ -100,6 +118,7 @@
     if (loopPC) { try { loopPC.close(); } catch (_) {} loopPC = null; }
     if (incomingSrc) { try { incomingSrc.disconnect(); } catch (_) {} incomingSrc = null; }
     pendingSignals = []; // старый сигналинг не должен попасть в новый loopPC
+    bridgeUp = false;
   }
 
   async function setupLoopback(role) {
@@ -107,10 +126,11 @@
     const queued = pendingSignals; // снимок ДО teardown (он очистит очередь)
     teardownLoopback();
     loopRole = role;
-    loopPC = new NativePC({ iceServers: [] }); // обе вкладки на одной машине — host-кандидаты
+    // STUN на случай, если host/mDNS-кандидаты между вкладками не сходятся
+    loopPC = new NativePC({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
 
     loopPC.onicecandidate = (e) => {
-      if (e.candidate) send({ type: "loop-signal", data: { cand: e.candidate } });
+      if (e.candidate) send({ type: "loop-signal", data: { cand: candJSON(e.candidate) } });
     };
     loopPC.ontrack = (e) => {
       // звук ДРУГОГО собеседника → в наш исходящий микс
@@ -119,8 +139,13 @@
       incomingSrc = ctx.createMediaStreamSource(stream);
       incomingSrc.connect(mixDest);
       resume();
-      setStatus("связано ✓");
+      bridgeUp = true;
+      renderStatus();
       log("loopback: получаю звук второй вкладки");
+    };
+    loopPC.oniceconnectionstatechange = () => {
+      log("loopback ICE:", loopPC.iceConnectionState);
+      if (loopPC.iceConnectionState === "failed") setStatus("мост не соединился (ICE failed)");
     };
     loopPC.onconnectionstatechange = () => log("loopback:", loopPC.connectionState);
 
@@ -130,9 +155,9 @@
     if (role === "offer") {
       const offer = await loopPC.createOffer();
       await loopPC.setLocalDescription(offer);
-      send({ type: "loop-signal", data: { desc: loopPC.localDescription } });
+      send({ type: "loop-signal", data: { desc: descJSON(loopPC.localDescription) } });
     }
-    setStatus("связываюсь со второй вкладкой…");
+    renderStatus();
 
     // применяем сигналинг, который мог прийти до создания loopPC
     for (const d of queued) onLoopSignal(d);
@@ -146,7 +171,7 @@
         if (data.desc.type === "offer") {
           const answer = await loopPC.createAnswer();
           await loopPC.setLocalDescription(answer);
-          send({ type: "loop-signal", data: { desc: loopPC.localDescription } });
+          send({ type: "loop-signal", data: { desc: descJSON(loopPC.localDescription) } });
         }
       } else if (data.cand) {
         await loopPC.addIceCandidate(data.cand);
@@ -213,7 +238,8 @@
     loopOutSrc.connect(loopOutDest);
 
     resume();
-    setStatus("звонок активен ✓");
+    callActive = true;
+    renderStatus();
   }
 
   // ---- сообщения от фона ----
@@ -387,6 +413,15 @@
     if (statusDot) statusDot.style.background = dotColorFor(text);
   }
 
+  // комбинированный статус: видно отдельно «мост» (loopback) и «звонок» (nekto)
+  function renderStatus() {
+    buildPanel();
+    const text = (bridgeUp ? "мост ✓" : "мост …") + " · " + (callActive ? "звонок ✓" : "звонок …");
+    statusText.textContent = text;
+    statusDot.style.background =
+      bridgeUp && callActive ? "#6fdc8c" : bridgeUp || callActive ? "#f0c419" : "#ff9f6f";
+  }
+
   function paintPanel() {
     if (!micBtn) return;
     micBtn.classList.toggle("on", micOn);
@@ -418,6 +453,8 @@
 
   // ---- старт ----
   function start() {
+    buildGraph();  // создаём AudioContext СРАЗУ — тогда клики на странице (поиск
+                   // собеседника и т.п.) его разбудят ещё до начала звонка
     buildPanel();
     setStatus("подключаюсь…");
     send({ type: "register" });
